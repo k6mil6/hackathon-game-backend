@@ -1,0 +1,9 @@
+version: "3"
+
+tasks:
+  docker_dev:
+    aliases:
+      - dev
+    desc: "Start development environment"
+    cmds:
+      - docker-compose -f docker-compose.dev.yml up -d
