@@ -77,6 +77,10 @@ func (s *Storage) GetByUsername(ctx context.Context, username string) (model.Use
 
 }
 
+func (s *Storage) Close() error {
+	return s.db.Close()
+}
+
 type dbUser struct {
 	ID           int
 	Username     string
