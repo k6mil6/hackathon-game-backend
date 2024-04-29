@@ -1,0 +1,10 @@
+env: "local"
+db:
+    postgres_dsn: "postgres://postgres:postgres@localhost:5442/game_db?sslmode=disable"
+    retries_number: 3
+    retry_cooldown: 10s
+jwt:
+    secret: "secret"
+    token_ttl: 1h
+http_port: 8080
+migrations_path: "./migrations"

@@ -13,7 +13,7 @@ type Storages struct {
 	UsersStorage *users.Storage
 }
 
-func New(postgresConnectionString string, maxRetries int, retryCooldown time.Duration) (Storages, error) {
+func NewStorages(postgresConnectionString string, maxRetries int, retryCooldown time.Duration) (*Storages, error) {
 	var db *sqlx.DB
 	var err error
 	for i := 0; i < maxRetries; i++ {
@@ -24,14 +24,14 @@ func New(postgresConnectionString string, maxRetries int, retryCooldown time.Dur
 		time.Sleep(retryCooldown)
 	}
 	if err != nil {
-		return Storages{}, fmt.Errorf("failed to connect to postgres after %d retries: %w", maxRetries, err)
+		return nil, fmt.Errorf("failed to connect to postgres after %d retries: %w", maxRetries, err)
 	}
 
 	if err != nil {
-		return Storages{}, fmt.Errorf("failed to connect to redis after %d retries: %w", maxRetries, err)
+		return nil, fmt.Errorf("failed to connect to redis after %d retries: %w", maxRetries, err)
 	}
 
-	return Storages{
+	return &Storages{
 		UsersStorage: users.NewStorage(db),
 	}, nil
 }

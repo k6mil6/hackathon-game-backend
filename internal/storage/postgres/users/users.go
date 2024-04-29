@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/k6mil6/hackathon-game-backend/internal/model"
 	errs "github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/errors"
@@ -67,6 +68,8 @@ func (s *Storage) GetByUsername(ctx context.Context, username string) (model.Use
 	var user dbUser
 
 	if err := conn.GetContext(ctx, &user, query, username); err != nil {
+		fmt.Println(err)
+
 		if errors.Is(err, sql.ErrNoRows) {
 			return model.User{}, errs.ErrUserNotFound
 		}
@@ -82,8 +85,8 @@ func (s *Storage) Close() error {
 }
 
 type dbUser struct {
-	ID           int
-	Username     string
-	PasswordHash []byte
-	CreatedAt    string
+	ID           int    `db:"id"`
+	Username     string `db:"username"`
+	PasswordHash []byte `db:"password_hash"`
+	CreatedAt    string `db:"created_at"`
 }
