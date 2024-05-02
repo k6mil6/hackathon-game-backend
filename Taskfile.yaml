@@ -7,3 +7,9 @@ tasks:
     desc: "Start development environment"
     cmds:
       - docker-compose -f docker-compose.dev.yml up -d
+  migrate_down:
+    aliases:
+      - down
+    desc: "Rollback migrations"
+    cmds:
+      - migrate -path ./migrations -database postgres://postgres:postgres@localhost:5442/game_db?sslmode=disable down

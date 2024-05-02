@@ -1,0 +1,5 @@
+CREATE TABLE IF NOT EXISTS balances (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0
+);
