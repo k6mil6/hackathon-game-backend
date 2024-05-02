@@ -3,17 +3,27 @@ package postgres
 import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/balances"
+	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/transactions"
 	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/users"
 	"io"
+	"log/slog"
 	"reflect"
 	"time"
 )
 
 type Storages struct {
-	UsersStorage *users.Storage
+	UsersStorage        *users.Storage
+	BalancesStorage     *balances.Storage
+	TransactionsStorage *transactions.Storage
 }
 
-func NewStorages(postgresConnectionString string, maxRetries int, retryCooldown time.Duration) (*Storages, error) {
+func NewStorages(
+	postgresConnectionString string,
+	maxRetries int,
+	retryCooldown time.Duration,
+	log *slog.Logger,
+) (*Storages, error) {
 	var db *sqlx.DB
 	var err error
 	for i := 0; i < maxRetries; i++ {
@@ -32,7 +42,9 @@ func NewStorages(postgresConnectionString string, maxRetries int, retryCooldown 
 	}
 
 	return &Storages{
-		UsersStorage: users.NewStorage(db),
+		UsersStorage:        users.NewStorage(db, log),
+		BalancesStorage:     balances.NewStorage(db, log),
+		TransactionsStorage: transactions.NewStorage(db, log),
 	}, nil
 }
 
