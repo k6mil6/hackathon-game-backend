@@ -21,7 +21,7 @@ func main() {
 	defer cancel()
 
 	log.Info("connecting to db", slog.String("dsn", cfg.DB.PostgresDSN))
-	storages, err := postgres.NewStorages(cfg.DB.PostgresDSN, cfg.DB.RetriesNumber, cfg.DB.RetryCooldown)
+	storages, err := postgres.NewStorages(cfg.DB.PostgresDSN, cfg.DB.RetriesNumber, cfg.DB.RetryCooldown, log)
 	if err != nil {
 		log.Error("failed to connect to database", err)
 

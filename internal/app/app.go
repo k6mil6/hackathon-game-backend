@@ -21,7 +21,7 @@ func New(
 	secret string,
 	port int,
 ) *App {
-	auth := authservice.New(log, storages.UsersStorage, tokenTTL, secret)
+	auth := authservice.New(log, storages.UsersStorage, storages.AdminsStorage, tokenTTL, secret)
 
 	httpApp := httpapp.New(ctx, log, port, auth, secret)
 

@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"github.com/jmoiron/sqlx"
 	"github.com/k6mil6/hackathon-game-backend/internal/model"
 	errs "github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/errors"
@@ -44,7 +43,7 @@ func (s *Storage) Save(ctx context.Context, user *model.User) (int, error) {
 		}
 	}(conn)
 
-	query := `INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id`
+	query := `INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id`
 
 	var id int
 
@@ -52,7 +51,6 @@ func (s *Storage) Save(ctx context.Context, user *model.User) (int, error) {
 		ctx,
 		query,
 		user.Username,
-		user.Email,
 		user.PasswordHash,
 	).Scan(&id); err != nil {
 		var pqErr *pq.Error
@@ -91,9 +89,9 @@ func (s *Storage) GetByUsername(ctx context.Context, username string) (model.Use
 	var user dbUser
 
 	if err := conn.GetContext(ctx, &user, query, username); err != nil {
-		fmt.Println(err)
-
+		log.Error("failed to get user", slog.String("error", err.Error()))
 		if errors.Is(err, sql.ErrNoRows) {
+			log.Error("user not found", slog.String("error", err.Error()))
 			return model.User{}, errs.ErrUserNotFound
 		}
 		return model.User{}, err
@@ -164,6 +162,64 @@ func (s *Storage) UpdateHiredAt(ctx context.Context, id int, hiredAt time.Time) 
 	}
 
 	log.Info("updated hired_at", id, hiredAt)
+	return nil
+}
+
+func (s *Storage) UpdateEmail(ctx context.Context, id int, email string) error {
+	op := "users.UpdateEmail"
+
+	log := s.log.With("op", op)
+
+	log.Info("updating email", id, email)
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return err
+	}
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			return
+		}
+	}(conn)
+
+	query := `UPDATE users SET email = $1 WHERE id = $2`
+
+	if _, err := conn.ExecContext(ctx, query, email, id); err != nil {
+		log.Error("failed to update email", slog.String("error", err.Error()))
+		return err
+	}
+
+	log.Info("updated email", id, email)
+	return nil
+}
+
+func (s *Storage) UpdatePassword(ctx context.Context, id int, passwordHash []byte) error {
+	op := "users.UpdatePassword"
+
+	log := s.log.With("op", op)
+
+	log.Info("updating password", id, passwordHash)
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return err
+	}
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			return
+		}
+	}(conn)
+
+	query := `UPDATE users SET password_hash = $1 WHERE id = $2`
+
+	if _, err := conn.ExecContext(ctx, query, passwordHash, id); err != nil {
+		log.Error("failed to update password", slog.String("error", err.Error()))
+		return err
+	}
+
+	log.Info("updated password", id, passwordHash)
 	return nil
 }
 

@@ -136,15 +136,7 @@ func (s *Storage) GetUserTransactions(ctx context.Context, userID int) ([]model.
 
 	var result []model.Transaction
 	for _, transaction := range transactions {
-		result = append(result, model.Transaction{
-			ID:         transaction.ID,
-			SenderID:   transaction.SenderID,
-			ReceiverID: transaction.ReceiverID,
-			Amount:     transaction.Amount,
-			TypeID:     transaction.TypeID,
-			StatusID:   transaction.StatusID,
-			CreatedAt:  transaction.CreatedAt,
-		})
+		result = append(result, model.Transaction(transaction))
 	}
 
 	return result, nil

@@ -2,9 +2,11 @@ package login
 
 import (
 	"context"
+	"errors"
 	"github.com/go-chi/render"
 	httpserver "github.com/k6mil6/hackathon-game-backend/internal/http"
 	resp "github.com/k6mil6/hackathon-game-backend/internal/http/response"
+	authService "github.com/k6mil6/hackathon-game-backend/internal/service/auth"
 	"log/slog"
 	"net/http"
 )
@@ -30,6 +32,8 @@ func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.Handl
 		var req Request
 
 		if err := render.DecodeJSON(r.Body, &req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+
 			log.Error("error decoding JSON request:", err)
 
 			render.JSON(w, r, resp.Error("error decoding JSON request"))
@@ -40,6 +44,8 @@ func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.Handl
 		log.Info("request body decoded", slog.Any("request", req))
 
 		if req.Username == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+
 			log.Error("username is required")
 
 			render.JSON(w, r, resp.Error("username is required"))
@@ -48,6 +54,8 @@ func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.Handl
 		}
 
 		if req.Password == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+
 			log.Error("password is required")
 
 			render.JSON(w, r, resp.Error("password is required"))
@@ -55,9 +63,19 @@ func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.Handl
 			return
 		}
 
-		token, err := auth.Login(ctx, req.Username, req.Password)
+		token, err := auth.LoginUser(ctx, req.Username, req.Password)
 		if err != nil {
-			log.Error("error logging in:", err)
+			if errors.Is(err, authService.ErrInvalidCredentials) {
+				w.WriteHeader(http.StatusUnauthorized)
+
+				render.JSON(w, r, resp.Error("user not found"))
+
+				return
+			}
+
+			w.WriteHeader(http.StatusInternalServerError)
+
+			log.Error("error logging in:", slog.String("error", err.Error()))
 
 			render.JSON(w, r, resp.Error("internal server error"))
 

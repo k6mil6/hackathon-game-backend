@@ -1,4 +1,4 @@
-package register
+package login
 
 import (
 	"context"
@@ -15,12 +15,13 @@ type Request struct {
 }
 
 type Response struct {
+	JWTToken string `json:"jwt_token"`
 	resp.Response
 }
 
 func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.user.register.New"
+		op := "handlers.admin.login.New"
 
 		log = log.With(
 			slog.String("op", op),
@@ -54,21 +55,22 @@ func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.Handl
 			return
 		}
 
-		log.Info("registering user")
-
-		id, err := auth.RegisterUser(ctx, req.Username, req.Password)
+		token, err := auth.LoginAdmin(ctx, req.Username, req.Password)
 		if err != nil {
-			log.Error("error registering user:", err)
+			log.Error("error logging in:", err)
 
-			render.JSON(w, r, resp.Error("error registering user"))
+			render.JSON(w, r, resp.Error("internal server error"))
 
 			return
 		}
 
-		log.Info("user registered with id", slog.Int("id", id))
-
-		render.JSON(w, r, Response{
-			resp.OK(),
-		})
+		responseOK(w, r, token)
 	}
+}
+
+func responseOK(w http.ResponseWriter, r *http.Request, token string) {
+	render.JSON(w, r, Response{
+		Response: resp.OK(),
+		JWTToken: token,
+	})
 }

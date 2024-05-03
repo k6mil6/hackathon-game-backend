@@ -13,3 +13,9 @@ tasks:
     desc: "Rollback migrations"
     cmds:
       - migrate -path ./migrations -database postgres://postgres:postgres@localhost:5442/game_db?sslmode=disable down
+  migrate_up:
+    aliases:
+      - up
+    desc: "Apply migrations"
+    cmds:
+      - migrate -path ./migrations -database postgres://postgres:postgres@localhost:5442/game_db?sslmode=disable up

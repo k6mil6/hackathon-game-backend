@@ -2,6 +2,7 @@ package identity
 
 import (
 	"context"
+	"errors"
 	"github.com/go-chi/render"
 	resp "github.com/k6mil6/hackathon-game-backend/internal/http/response"
 	"github.com/k6mil6/hackathon-game-backend/internal/lib/jwt"
@@ -29,14 +30,14 @@ func New(secret string) func(next http.Handler) http.Handler {
 				return
 			}
 
-			userId, err := jwt.GetUserID(headerParts[1], secret)
+			id, err := jwt.GetID(headerParts[1], secret)
 			if err != nil {
 				render.JSON(w, r, resp.Error(err.Error()))
 				return
 			}
 
 			ctx := r.Context()
-			ctx = context.WithValue(ctx, "user_id", userId)
+			ctx = context.WithValue(ctx, "id", id)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		}
 
@@ -44,6 +45,9 @@ func New(secret string) func(next http.Handler) http.Handler {
 	}
 }
 
-func GetUserID(ctx context.Context) int64 {
-	return ctx.Value("user_id").(int64)
+func GetID(ctx context.Context) (int, error) {
+	if ctx.Value("id") == nil {
+		return 0, errors.New("id not found in context")
+	}
+	return ctx.Value("id").(int), nil
 }

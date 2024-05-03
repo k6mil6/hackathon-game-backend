@@ -6,10 +6,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	httpserver "github.com/k6mil6/hackathon-game-backend/internal/http"
-	"github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/login"
-	"github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/register"
+	adminLogin "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/login"
+	adminRegister "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/register"
+	userLogin "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/login"
+	userRegister "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/register"
+	"github.com/k6mil6/hackathon-game-backend/internal/http/middleware/identity"
 	mwlogger "github.com/k6mil6/hackathon-game-backend/internal/http/middleware/logger"
-	"github.com/k6mil6/hackathon-game-backend/internal/http/middleware/user/identity"
 	"log/slog"
 	"net/http"
 )
@@ -27,11 +29,14 @@ func New(ctx context.Context, log *slog.Logger, port int, auth httpserver.Auth, 
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Post("/register", register.New(ctx, log, auth))
-	router.Post("/login", login.New(ctx, log, auth))
+	router.Post("/register", userRegister.New(ctx, log, auth))
+	router.Post("/login", userLogin.New(ctx, log, auth))
+	router.Post("/login/admin", adminLogin.New(ctx, log, auth))
 
 	routerWithAuth := chi.NewRouter()
 	routerWithAuth.Use(identity.New(secret))
+
+	routerWithAuth.Post("/register/admin", adminRegister.New(ctx, log, auth))
 
 	// routes with authentication
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/go-chi/render"
 	httpserver "github.com/k6mil6/hackathon-game-backend/internal/http"
+	"github.com/k6mil6/hackathon-game-backend/internal/http/middleware/identity"
 	resp "github.com/k6mil6/hackathon-game-backend/internal/http/response"
 	"log/slog"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 type Request struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
+	RoleID   int64  `json:"role_id"`
 }
 
 type Response struct {
@@ -20,7 +22,7 @@ type Response struct {
 
 func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		const op = "handlers.user.register.New"
+		const op = "handlers.admin.register.New"
 
 		log = log.With(
 			slog.String("op", op),
@@ -29,6 +31,8 @@ func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.Handl
 		var req Request
 
 		if err := render.DecodeJSON(r.Body, &req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+
 			log.Error("error decoding JSON request:", err)
 
 			render.JSON(w, r, resp.Error("error decoding JSON request"))
@@ -39,6 +43,8 @@ func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.Handl
 		log.Info("request body decoded", slog.Any("request", req))
 
 		if req.Username == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+
 			log.Error("username is required")
 
 			render.JSON(w, r, resp.Error("username is required"))
@@ -47,6 +53,8 @@ func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.Handl
 		}
 
 		if req.Password == "" {
+			w.WriteHeader(http.StatusUnauthorized)
+
 			log.Error("password is required")
 
 			render.JSON(w, r, resp.Error("password is required"))
@@ -54,18 +62,37 @@ func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.Handl
 			return
 		}
 
+		roleID := 1
+
+		if req.RoleID != 0 {
+			roleID = int(req.RoleID)
+		}
+
 		log.Info("registering user")
 
-		id, err := auth.RegisterUser(ctx, req.Username, req.Password)
+		registrantID, err := identity.GetID(r.Context())
 		if err != nil {
-			log.Error("error registering user:", err)
+			w.WriteHeader(http.StatusInternalServerError)
 
-			render.JSON(w, r, resp.Error("error registering user"))
+			log.Error("error getting registrant id:", err)
+
+			render.JSON(w, r, resp.Error("internal error"))
 
 			return
 		}
 
-		log.Info("user registered with id", slog.Int("id", id))
+		id, err := auth.RegisterAdmin(ctx, req.Username, req.Password, registrantID, roleID)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+
+			log.Error("error registering admin:", err)
+
+			render.JSON(w, r, resp.Error("error registering admin"))
+
+			return
+		}
+
+		log.Info("admin registered with id", slog.Int("id", id))
 
 		render.JSON(w, r, Response{
 			resp.OK(),

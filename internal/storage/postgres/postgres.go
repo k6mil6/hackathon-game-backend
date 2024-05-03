@@ -3,7 +3,10 @@ package postgres
 import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
+	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/admins"
 	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/balances"
+	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/purchases"
+	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/shop/items"
 	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/transactions"
 	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/users"
 	"io"
@@ -16,6 +19,9 @@ type Storages struct {
 	UsersStorage        *users.Storage
 	BalancesStorage     *balances.Storage
 	TransactionsStorage *transactions.Storage
+	ShopItemsStorage    *items.Storage
+	PurchasesStorage    *purchases.Storage
+	AdminsStorage       *admins.Storage
 }
 
 func NewStorages(
@@ -45,6 +51,9 @@ func NewStorages(
 		UsersStorage:        users.NewStorage(db, log),
 		BalancesStorage:     balances.NewStorage(db, log),
 		TransactionsStorage: transactions.NewStorage(db, log),
+		ShopItemsStorage:    items.NewStorage(db, log),
+		PurchasesStorage:    purchases.NewStorage(db, log),
+		AdminsStorage:       admins.NewStorage(db, log),
 	}, nil
 }
 

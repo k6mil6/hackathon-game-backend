@@ -20,3 +20,28 @@ type Transaction struct {
 	StatusID   int
 	CreatedAt  time.Time
 }
+
+type ShopItem struct {
+	ID          int
+	Name        string
+	Description string
+	Price       float64
+	InStock     int
+}
+
+type Purchase struct {
+	ID         int
+	ShopItemID int
+	BuyerID    int
+	CreatedAt  time.Time
+}
+
+type Admin struct {
+	ID           int
+	Username     string
+	Email        string
+	PasswordHash []byte
+	RegisteredAt time.Time
+	RegisteredBy int
+	RoleID       int
+}
