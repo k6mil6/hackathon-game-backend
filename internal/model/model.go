@@ -45,3 +45,14 @@ type Admin struct {
 	RegisteredBy int
 	RoleID       int
 }
+
+type Task struct {
+	ID         int
+	Name       string
+	StatusID   int
+	Amount     float64
+	CreatedAt  time.Time
+	CreatedBy  int
+	ForGroupID int
+	UserID     int
+}

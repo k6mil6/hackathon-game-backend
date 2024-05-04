@@ -19,3 +19,9 @@ tasks:
     desc: "Apply migrations"
     cmds:
       - migrate -path ./migrations -database postgres://postgres:postgres@localhost:5442/game_db?sslmode=disable up
+  migrate_create:
+    aliases:
+      - create
+    desc: "Create migrations"
+    cmds:
+      - migrate create -dir ./migrations -ext sql -seq {{.NAME}}
