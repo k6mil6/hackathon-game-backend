@@ -8,6 +8,14 @@ import (
 	"time"
 )
 
+const (
+	InProgressStatusID = 1
+	CompletedStatusID  = 2
+	CancelledStatusID  = 3
+	AllGroupID         = 1
+	UserGroupID        = 2
+)
+
 type Storage struct {
 	db  *sqlx.DB
 	log *slog.Logger
@@ -20,7 +28,7 @@ func NewStorage(db *sqlx.DB, log *slog.Logger) *Storage {
 	}
 }
 
-func (s *Storage) GetAll(ctx context.Context) ([]model.Task, error) {
+func (s *Storage) GetAll(ctx context.Context, userID int) ([]model.Task, error) {
 	op := "tasks.GetAll"
 
 	log := s.log.With(slog.String("op", op))
@@ -40,8 +48,10 @@ func (s *Storage) GetAll(ctx context.Context) ([]model.Task, error) {
 		}
 	}(conn)
 
+	query := `SELECT id, name, amount, created_at, created_by, for_group_id FROM tasks WHERE user_id = $1 OR for_group_id = $2 ORDER BY created_at DESC`
+
 	var tasks []dbTask
-	if err := conn.SelectContext(ctx, &tasks, "SELECT * FROM tasks"); err != nil {
+	if err := conn.SelectContext(ctx, &tasks, query, userID, AllGroupID); err != nil {
 		log.Error("failed to get all tasks", slog.String("error", err.Error()))
 		return nil, err
 	}
@@ -88,7 +98,7 @@ func (s *Storage) Add(ctx context.Context, task model.Task) (int, error) {
 	err = conn.QueryRowxContext(ctx,
 		query,
 		task.Name,
-		task.StatusID,
+		InProgressStatusID,
 		task.Amount,
 		task.CreatedBy,
 		task.ForGroupID,
@@ -102,6 +112,106 @@ func (s *Storage) Add(ctx context.Context, task model.Task) (int, error) {
 	log.Info("added task to storage")
 
 	return taskID, nil
+}
+
+func (s *Storage) MarkAsCompleted(ctx context.Context, taskID int) error {
+	op := "tasks.MarkAsCompleted"
+
+	log := s.log.With(slog.String("op", op))
+
+	log.Info("marking task as completed")
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return err
+	}
+
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			log.Error("failed to close connection", slog.String("error", err.Error()))
+			return
+		}
+	}(conn)
+
+	query := `UPDATE tasks SET status_id = $1 WHERE id = $2`
+
+	_, err = conn.ExecContext(ctx, query, CompletedStatusID, taskID)
+	if err != nil {
+		log.Error("failed to mark task as completed", slog.String("error", err.Error()))
+		return err
+	}
+
+	log.Info("marked task as completed")
+
+	return nil
+}
+
+func (s *Storage) MarkAsCancelled(ctx context.Context, taskID int) error {
+	op := "tasks.MarkAsCancelled"
+
+	log := s.log.With(slog.String("op", op))
+
+	log.Info("marking task as cancelled")
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return err
+	}
+
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			log.Error("failed to close connection", slog.String("error", err.Error()))
+			return
+		}
+	}(conn)
+
+	query := `UPDATE tasks SET status_id = $1 WHERE id = $2`
+
+	_, err = conn.ExecContext(ctx, query, CancelledStatusID, taskID)
+	if err != nil {
+		log.Error("failed to mark task as cancelled", slog.String("error", err.Error()))
+		return err
+	}
+
+	log.Info("marked task as cancelled")
+
+	return nil
+}
+
+func (s *Storage) GetByID(ctx context.Context, taskID int) (model.Task, error) {
+	op := "tasks.GetByID"
+
+	log := s.log.With(slog.String("op", op))
+
+	log.Info("getting task from storage")
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return model.Task{}, err
+	}
+
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			log.Error("failed to close connection", slog.String("error", err.Error()))
+			return
+		}
+	}(conn)
+
+	var task dbTask
+	query := `SELECT id, name, status_id, amount, created_at, created_by, for_group_id, user_id FROM tasks WHERE id = $1`
+
+	err = conn.GetContext(ctx, &task, query, taskID)
+	if err != nil {
+		log.Error("failed to get task", slog.String("error", err.Error()))
+		return model.Task{}, err
+	}
+
+	log.Info("got task from storage")
+
+	return model.Task(task), nil
 }
 
 func (s *Storage) Close() error {

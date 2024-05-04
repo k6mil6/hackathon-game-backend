@@ -7,6 +7,7 @@ import (
 	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/balances"
 	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/purchases"
 	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/shop/items"
+	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/tasks"
 	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/transactions"
 	"github.com/k6mil6/hackathon-game-backend/internal/storage/postgres/users"
 	"io"
@@ -22,6 +23,7 @@ type Storages struct {
 	ShopItemsStorage    *items.Storage
 	PurchasesStorage    *purchases.Storage
 	AdminsStorage       *admins.Storage
+	TasksStorage        *tasks.Storage
 }
 
 func NewStorages(
@@ -54,6 +56,7 @@ func NewStorages(
 		ShopItemsStorage:    items.NewStorage(db, log),
 		PurchasesStorage:    purchases.NewStorage(db, log),
 		AdminsStorage:       admins.NewStorage(db, log),
+		TasksStorage:        tasks.NewStorage(db, log),
 	}, nil
 }
 

@@ -15,23 +15,26 @@ func New(secret string) func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
 			if header == "" {
+				w.WriteHeader(http.StatusUnauthorized)
 				render.JSON(w, r, resp.Error("Authorization header is empty"))
-
 				return
 			}
 			headerParts := strings.Split(header, " ")
 			if len(headerParts) != 2 || headerParts[0] != "Bearer" {
+				w.WriteHeader(http.StatusUnauthorized)
 				render.JSON(w, r, resp.Error("Authorization header is invalid"))
 				return
 			}
 
 			if len(headerParts[1]) == 0 {
+				w.WriteHeader(http.StatusUnauthorized)
 				render.JSON(w, r, resp.Error("Authorization token is empty"))
 				return
 			}
 
 			id, err := jwt.GetID(headerParts[1], secret)
 			if err != nil {
+				w.WriteHeader(http.StatusUnauthorized)
 				render.JSON(w, r, resp.Error(err.Error()))
 				return
 			}

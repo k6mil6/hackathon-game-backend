@@ -84,7 +84,7 @@ func (s *Storage) GetByUsername(ctx context.Context, username string) (model.Use
 		}
 	}(conn)
 
-	query := `SELECT id, username, email, password_hash, registered_at, hired_at FROM users WHERE username = $1`
+	query := `SELECT id, username, password_hash, registered_at, hired_at FROM users WHERE username = $1`
 
 	var user dbUser
 
