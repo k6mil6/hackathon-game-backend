@@ -9,11 +9,12 @@ import (
 )
 
 const (
-	InProgressStatusID = 1
-	CompletedStatusID  = 2
-	CancelledStatusID  = 3
-	AllGroupID         = 1
-	UserGroupID        = 2
+	InProgressStatusID           = 1
+	WaitingForAcceptanceStatusID = 2
+	CompletedStatusID            = 3
+	CancelledStatusID            = 4
+	AllGroupID                   = 1
+	UserGroupID                  = 2
 )
 
 type Storage struct {
@@ -112,6 +113,73 @@ func (s *Storage) Add(ctx context.Context, task model.Task) (int, error) {
 	log.Info("added task to storage")
 
 	return taskID, nil
+}
+
+func (s *Storage) MarkAsInProgress(ctx context.Context, taskID int) error {
+	op := "tasks.MarkAsInProgress"
+
+	log := s.log.With(slog.String("op", op))
+
+	log.Info("marking task as in progress")
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return err
+	}
+
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			log.Error("failed to close connection", slog.String("error", err.Error()))
+			return
+		}
+	}(conn)
+
+	query := `UPDATE tasks SET status_id = $1 WHERE id = $2`
+
+	_, err = conn.ExecContext(ctx, query, InProgressStatusID, taskID)
+	if err != nil {
+		log.Error("failed to mark task as in progress", slog.String("error", err.Error()))
+		return err
+	}
+
+	log.Info("marked task as in progress")
+
+	return nil
+}
+
+func (s *Storage) MarkAsWaitingForAcceptance(ctx context.Context, taskID int) error {
+	op := "tasks.MarkAsWaitingForAcceptance"
+
+	log := s.log.With(slog.String("op", op))
+
+	log.Info("marking task as waiting for acceptance")
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return err
+	}
+
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			log.Error("failed to close connection", slog.String("error", err.Error()))
+			return
+		}
+	}(conn)
+
+	query := `UPDATE tasks SET status_id = $1 WHERE id = $2`
+
+	_, err = conn.ExecContext(ctx, query, WaitingForAcceptanceStatusID, taskID)
+
+	if err != nil {
+		log.Error("failed to mark task as waiting for acceptance", slog.String("error", err.Error()))
+		return err
+	}
+
+	log.Info("marked task as waiting for acceptance")
+
+	return nil
 }
 
 func (s *Storage) MarkAsCompleted(ctx context.Context, taskID int) error {

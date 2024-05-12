@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS tasks_statuses (
 
 INSERT INTO tasks_statuses (name) VALUES
     ('in progress'),
+    ('waiting for acceptance'),
     ('completed'),
     ('cancelled')
 ON CONFLICT (name) DO NOTHING;

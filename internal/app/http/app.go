@@ -8,10 +8,12 @@ import (
 	httpserver "github.com/k6mil6/hackathon-game-backend/internal/http"
 	adminLogin "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/login"
 	adminRegister "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/register"
+	adminTasksAccept "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/tasks/accept"
 	adminTasksCreate "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/tasks/create"
 	userLogin "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/login"
 	userRegister "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/register"
 	userAllTasks "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/tasks/all"
+	userTasksDecline "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/tasks/decline"
 	"github.com/k6mil6/hackathon-game-backend/internal/http/middleware/identity"
 	mwlogger "github.com/k6mil6/hackathon-game-backend/internal/http/middleware/logger"
 	"log/slog"
@@ -42,15 +44,16 @@ func New(
 	router.Post("/login", userLogin.New(ctx, log, auth))
 	router.Post("/admin/login", adminLogin.New(ctx, log, auth))
 
+	// routes with authentication
 	routerWithAuth := chi.NewRouter()
 	routerWithAuth.Use(identity.New(secret))
 
 	routerWithAuth.Post("/admin/register", adminRegister.New(ctx, log, auth))
 	routerWithAuth.Post("/admin/task/create", adminTasksCreate.New(ctx, log, tasks))
+	routerWithAuth.Post("/admin/task/accept?id={id}", adminTasksAccept.New(ctx, log, tasks))
 
 	routerWithAuth.Get("/user/task", userAllTasks.New(ctx, log, tasks))
-
-	// routes with authentication
+	routerWithAuth.Get("/user/task/decline?id={id}", userTasksDecline.New(ctx, log, tasks))
 
 	router.Mount("/", routerWithAuth)
 

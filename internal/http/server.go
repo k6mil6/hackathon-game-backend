@@ -14,7 +14,9 @@ type Auth interface {
 
 type Tasks interface {
 	GetAll(ctx context.Context, userID int) ([]model.Task, error)
+	GetByID(ctx context.Context, taskID int) (model.Task, error)
 	Add(ctx context.Context, task model.Task) (int, error)
 	MarkAsCompleted(ctx context.Context, taskID, adminID int) error
-	MarkAsCancelled(ctx context.Context, taskID, adminID int) error
+	MarkAsCancelled(ctx context.Context, taskID, userID int) error
+	MarkAsWaitingForAcceptance(ctx context.Context, taskID, userID int) error
 }
