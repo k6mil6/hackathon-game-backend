@@ -1,1 +1,5 @@
 DROP TABLE IF EXISTS tasks;
+
+DROP TABLE IF EXISTS tasks_statuses;
+
+DROP TABLE IF EXISTS groups;

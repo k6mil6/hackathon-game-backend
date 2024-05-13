@@ -2,6 +2,7 @@ package tasks
 
 import (
 	"context"
+	"database/sql"
 	"github.com/jmoiron/sqlx"
 	"github.com/k6mil6/hackathon-game-backend/internal/model"
 	"log/slog"
@@ -29,8 +30,8 @@ func NewStorage(db *sqlx.DB, log *slog.Logger) *Storage {
 	}
 }
 
-func (s *Storage) GetAll(ctx context.Context, userID int) ([]model.Task, error) {
-	op := "tasks.GetAll"
+func (s *Storage) GetAllUserTasks(ctx context.Context, userID int) ([]model.Task, error) {
+	op := "tasks.GetAllUserTasks"
 
 	log := s.log.With(slog.String("op", op))
 
@@ -61,10 +62,62 @@ func (s *Storage) GetAll(ctx context.Context, userID int) ([]model.Task, error) 
 
 	var shopTasks []model.Task
 	for _, task := range tasks {
-		shopTasks = append(shopTasks, model.Task(task))
+		shopTasks = append(shopTasks, model.Task{
+			ID:         task.ID,
+			Name:       task.Name,
+			Amount:     task.Amount,
+			CreatedAt:  task.CreatedAt,
+			CreatedBy:  task.CreatedBy,
+			ForGroupID: task.ForGroupID,
+		})
 	}
 
 	return shopTasks, nil
+}
+
+func (s *Storage) GetAllAdminTasks(ctx context.Context, adminID int) ([]model.Task, error) {
+	op := "tasks.GetAllAdminTasks"
+
+	log := s.log.With(slog.String("op", op))
+
+	log.Info("getting all tasks from storage")
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			log.Error("failed to close connection", slog.String("error", err.Error()))
+			return
+		}
+	}(conn)
+
+	query := `SELECT id, name, amount, created_at, created_by, status_id, for_group_id FROM tasks WHERE created_by = $1 ORDER BY created_at DESC`
+
+	var dbTasks []dbTask
+	if err := conn.SelectContext(ctx, &dbTasks, query, adminID); err != nil {
+		log.Error("failed to get all tasks", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	log.Info("got all tasks from storage")
+
+	var tasks []model.Task
+	for _, task := range dbTasks {
+		tasks = append(tasks, model.Task{
+			ID:         task.ID,
+			Name:       task.Name,
+			Amount:     task.Amount,
+			CreatedAt:  task.CreatedAt,
+			CreatedBy:  task.CreatedBy,
+			ForGroupID: task.ForGroupID,
+		})
+	}
+
+	return tasks, nil
 }
 
 func (s *Storage) Add(ctx context.Context, task model.Task) (int, error) {
@@ -279,7 +332,20 @@ func (s *Storage) GetByID(ctx context.Context, taskID int) (model.Task, error) {
 
 	log.Info("got task from storage")
 
-	return model.Task(task), nil
+	if !task.UserID.Valid {
+		task.UserID = sql.NullInt64{Int64: 0, Valid: true}
+	}
+
+	return model.Task{
+		ID:         task.ID,
+		Name:       task.Name,
+		StatusID:   task.StatusID,
+		Amount:     task.Amount,
+		CreatedAt:  task.CreatedAt,
+		CreatedBy:  task.CreatedBy,
+		ForGroupID: task.ForGroupID,
+		UserID:     int(task.UserID.Int64),
+	}, nil
 }
 
 func (s *Storage) Close() error {
@@ -287,12 +353,12 @@ func (s *Storage) Close() error {
 }
 
 type dbTask struct {
-	ID         int       `db:"id"`
-	Name       string    `db:"name"`
-	StatusID   int       `db:"status_id"`
-	Amount     float64   `db:"amount"`
-	CreatedAt  time.Time `db:"created_at"`
-	CreatedBy  int       `db:"created_by"`
-	ForGroupID int       `db:"for_group_id"`
-	UserID     int       `db:"user_id"`
+	ID         int           `db:"id"`
+	Name       string        `db:"name"`
+	StatusID   int           `db:"status_id"`
+	Amount     float64       `db:"amount"`
+	CreatedAt  time.Time     `db:"created_at"`
+	CreatedBy  int           `db:"created_by"`
+	ForGroupID int           `db:"for_group_id"`
+	UserID     sql.NullInt64 `db:"user_id"`
 }

@@ -1,0 +1,9 @@
+POST /register HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Content-Length: 53
+
+{
+  "username": "user12",
+  "password": "user"
+}

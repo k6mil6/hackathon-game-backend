@@ -9,11 +9,15 @@ import (
 	adminLogin "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/login"
 	adminRegister "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/register"
 	adminTasksAccept "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/tasks/accept"
+	adminTasksALl "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/tasks/all"
 	adminTasksCreate "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/tasks/create"
+	adminUserAll "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/admin/user/all"
 	userLogin "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/login"
 	userRegister "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/register"
 	userAllTasks "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/tasks/all"
+	userTasksComplete "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/tasks/complete"
 	userTasksDecline "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/tasks/decline"
+	userTop "github.com/k6mil6/hackathon-game-backend/internal/http/handlers/user/top"
 	"github.com/k6mil6/hackathon-game-backend/internal/http/middleware/identity"
 	mwlogger "github.com/k6mil6/hackathon-game-backend/internal/http/middleware/logger"
 	"log/slog"
@@ -32,6 +36,8 @@ func New(
 	port int,
 	auth httpserver.Auth,
 	tasks httpserver.Tasks,
+	transactions httpserver.Transactions,
+	users httpserver.Users,
 	secret string,
 ) *App {
 	router := chi.NewRouter()
@@ -40,9 +46,10 @@ func New(
 	router.Use(middleware.Recoverer)
 	router.Use(middleware.URLFormat)
 
-	router.Post("/register", userRegister.New(ctx, log, auth))
+	router.Post("/register", userRegister.New(ctx, log, auth, users))
 	router.Post("/login", userLogin.New(ctx, log, auth))
 	router.Post("/admin/login", adminLogin.New(ctx, log, auth))
+	router.Get("/user/top", userTop.New(ctx, log, users))
 
 	// routes with authentication
 	routerWithAuth := chi.NewRouter()
@@ -50,10 +57,14 @@ func New(
 
 	routerWithAuth.Post("/admin/register", adminRegister.New(ctx, log, auth))
 	routerWithAuth.Post("/admin/task/create", adminTasksCreate.New(ctx, log, tasks))
-	routerWithAuth.Post("/admin/task/accept?id={id}", adminTasksAccept.New(ctx, log, tasks))
+
+	routerWithAuth.Get("/admin/user", adminUserAll.New(ctx, log, users))
+	routerWithAuth.Get("/admin/task", adminTasksALl.New(ctx, log, tasks))
+	routerWithAuth.Get("/admin/task/accept/{id}", adminTasksAccept.New(ctx, log, tasks, transactions))
 
 	routerWithAuth.Get("/user/task", userAllTasks.New(ctx, log, tasks))
-	routerWithAuth.Get("/user/task/decline?id={id}", userTasksDecline.New(ctx, log, tasks))
+	routerWithAuth.Get("/user/task/decline/{id}", userTasksDecline.New(ctx, log, tasks))
+	routerWithAuth.Get("/user/task/complete/{id}", userTasksComplete.New(ctx, log, tasks))
 
 	router.Mount("/", routerWithAuth)
 

@@ -26,17 +26,18 @@ const (
 	PurchaseTypeID    = 2
 	DepositTypeID     = 3
 	RefundTypeID      = 4
+	RewardTypeID      = 5
 	PendingStatusID   = 1
 	CompletedStatusID = 2
 	CancelledStatusID = 3
 )
 
-func (s *Storage) AddTransaction(ctx context.Context, transaction *model.Transaction) error {
-	op := "transactions.AddTransaction"
+func (s *Storage) AddUserTransaction(ctx context.Context, transaction *model.Transaction) error {
+	op := "transactions.AddUserTransaction"
 
 	log := s.log.With("op", op)
 
-	log.Info("adding transaction", transaction)
+	log.Info("adding user transaction", transaction)
 
 	conn, err := s.db.Connx(ctx)
 	if err != nil {
@@ -60,13 +61,17 @@ func (s *Storage) AddTransaction(ctx context.Context, transaction *model.Transac
 	err = tx.GetContext(ctx, &balance, "SELECT balance FROM balances WHERE user_id = $1 FOR UPDATE", transaction.SenderID)
 	if err != nil {
 		log.Error("failed to get sender balance", slog.String("error", err.Error()))
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
 		return err
 	}
 
 	if balance < transaction.Amount {
 		log.Error("insufficient funds for the transaction")
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
 		return sql.ErrNoRows
 	}
 
@@ -75,35 +80,113 @@ func (s *Storage) AddTransaction(ctx context.Context, transaction *model.Transac
 		transaction.SenderID, transaction.ReceiverID, transaction.Amount, transaction.TypeID, PendingStatusID).Scan(&transactionID)
 	if err != nil {
 		log.Error("failed to insert transaction record", slog.String("error", err.Error()))
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
 		return err
 	}
 
 	_, err = tx.ExecContext(ctx, "UPDATE balances SET balance = balance - $1 WHERE user_id = $2", transaction.Amount, transaction.SenderID)
 	if err != nil {
 		log.Error("failed to update sender balance", slog.String("error", err.Error()))
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
 		return err
 	}
 
 	_, err = tx.ExecContext(ctx, "UPDATE balances SET balance = balance + $1 WHERE user_id = $2", transaction.Amount, transaction.ReceiverID)
 	if err != nil {
 		log.Error("failed to update receiver balance", slog.String("error", err.Error()))
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
 		return err
 	}
 
 	_, err = tx.ExecContext(ctx, "UPDATE transactions SET status_id = $1 WHERE id = $2", CompletedStatusID, transactionID)
 	if err != nil {
 		log.Error("failed to update transaction status", slog.String("error", err.Error()))
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
 		return err
 	}
 
 	err = tx.Commit()
 	if err != nil {
 		log.Error("failed to commit transaction", slog.String("error", err.Error()))
-		tx.Rollback()
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	return nil
+}
+
+func (s *Storage) AddAdminTransaction(ctx context.Context, transaction *model.Transaction) error {
+	op := "transactions.AddAdminTransaction"
+
+	log := s.log.With("op", op)
+
+	log.Info("adding admin transaction", transaction)
+
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return err
+	}
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			return
+		}
+	}(conn)
+
+	tx, err := conn.BeginTxx(ctx, nil)
+	if err != nil {
+		log.Error("failed to begin transaction:", slog.String("error", err.Error()))
+		return err
+	}
+
+	transaction.TypeID = RewardTypeID
+
+	var transactionID int64
+	err = tx.QueryRowContext(ctx, "INSERT INTO transactions (sender_id, receiver_id, amount, type_id, status_id) VALUES ($1, $2, $3, $4, $5) RETURNING id",
+		transaction.SenderID, transaction.ReceiverID, transaction.Amount, transaction.TypeID, PendingStatusID).Scan(&transactionID)
+	if err != nil {
+		log.Error("failed to insert transaction record", slog.String("error", err.Error()))
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, "UPDATE balances SET balance = balance + $1 WHERE user_id = $2", transaction.Amount, transaction.ReceiverID)
+	if err != nil {
+		log.Error("failed to update receiver balance", slog.String("error", err.Error()))
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	_, err = tx.ExecContext(ctx, "UPDATE transactions SET status_id = $1 WHERE id = $2", CompletedStatusID, transactionID)
+	if err != nil {
+		log.Error("failed to update transaction status", slog.String("error", err.Error()))
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Error("failed to commit transaction", slog.String("error", err.Error()))
+		if err := tx.Rollback(); err != nil {
+			return err
+		}
 		return err
 	}
 

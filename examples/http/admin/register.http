@@ -1,0 +1,13 @@
+POST /admin/register HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_CODE
+Content-Length: 57
+
+# JWT CODE админ получает в респонсе на авторизацию, на ручке /admin/login
+# Здесь админ может создать другого админа
+
+{
+  "username": "admin12",
+  "password": "admin"
+}

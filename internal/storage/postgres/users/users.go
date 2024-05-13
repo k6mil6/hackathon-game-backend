@@ -136,6 +136,81 @@ func (s *Storage) GetByID(ctx context.Context, id int) (model.User, error) {
 	return model.User(user), nil
 }
 
+func (s *Storage) GetAll(ctx context.Context) ([]model.User, error) {
+	op := "users.GetAll"
+
+	log := s.log.With("op", op)
+
+	log.Info("getting all users")
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return nil, err
+	}
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			return
+		}
+	}(conn)
+
+	query := `SELECT id, username, registered_at, hired_at FROM users`
+
+	var dbusers []dbUser
+
+	if err := conn.SelectContext(ctx, &dbusers, query); err != nil {
+		log.Error("failed to get users", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	users := make([]model.User, 0, len(dbusers))
+	for _, dbuser := range dbusers {
+		users = append(users, model.User(dbuser))
+	}
+
+	log.Info("got all users")
+	return users, nil
+}
+
+func (s *Storage) GetTopByBalance(ctx context.Context) ([]model.User, error) {
+	op := "users.GetTopByBalance"
+
+	log := s.log.With("op", op)
+
+	log.Info("getting top users by balance")
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return nil, err
+	}
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			return
+		}
+	}(conn)
+
+	query := `SELECT users.username, balances.balance 
+			  FROM users
+			  JOIN balances ON balances.user_id = users.id
+			  ORDER BY balance`
+
+	var dbUsers []dbUser
+
+	if err := conn.SelectContext(ctx, &dbUsers, query); err != nil {
+		log.Error("failed to get users", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	users := make([]model.User, 0, len(dbUsers))
+	for _, dbuser := range dbUsers {
+		users = append(users, model.User(dbuser))
+	}
+
+	log.Info("got top users by balance")
+	return users, nil
+}
+
 func (s *Storage) UpdateHiredAt(ctx context.Context, id int, hiredAt time.Time) error {
 	op := "users.UpdateHiredAt"
 
@@ -230,6 +305,7 @@ func (s *Storage) Close() error {
 type dbUser struct {
 	ID           int       `db:"id"`
 	Username     string    `db:"username"`
+	Balance      float64   `db:"balance"`
 	Email        string    `db:"email"`
 	PasswordHash []byte    `db:"password_hash"`
 	RegisteredAt time.Time `db:"registered_at"`

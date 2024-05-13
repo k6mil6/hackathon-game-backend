@@ -18,6 +18,33 @@ func NewStorage(db *sqlx.DB, log *slog.Logger) *Storage {
 	}
 }
 
+func (s *Storage) CreateBalance(ctx context.Context, userID int) error {
+	op := "balances.CreateBalance"
+
+	log := s.log.With("op", op, "userID", userID)
+
+	conn, err := s.db.Connx(ctx)
+	if err != nil {
+		log.Error("failed to get connection", slog.String("error", err.Error()))
+		return err
+	}
+	defer func(conn *sqlx.Conn) {
+		err := conn.Close()
+		if err != nil {
+			return
+		}
+	}(conn)
+
+	_, err = conn.ExecContext(ctx, "INSERT INTO balances (user_id, balance) VALUES ($1, 0)", userID)
+	if err != nil {
+		log.Error("failed to create balance", slog.String("error", err.Error()))
+		return err
+	}
+
+	log.Info("created balance")
+	return nil
+}
+
 func (s *Storage) GetBalance(ctx context.Context, userID int) (float64, error) {
 	op := "balances.GetBalance"
 

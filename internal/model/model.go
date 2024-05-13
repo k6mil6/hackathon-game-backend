@@ -5,6 +5,7 @@ import "time"
 type User struct {
 	ID           int
 	Username     string
+	Balance      float64
 	Email        string
 	PasswordHash []byte
 	RegisteredAt time.Time

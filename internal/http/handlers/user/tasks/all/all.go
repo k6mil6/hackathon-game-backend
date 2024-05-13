@@ -17,6 +17,7 @@ type Response struct {
 }
 
 type ResponseTask struct {
+	ID        int       `json:"id"`
 	Name      string    `json:"name"`
 	Amount    float64   `json:"amount"`
 	CreatedAt time.Time `json:"created_at"`
@@ -43,7 +44,7 @@ func New(ctx context.Context, log *slog.Logger, tasks httpserver.Tasks) http.Han
 
 		tasksRes := make([]ResponseTask, 0)
 
-		tasks, err := tasks.GetAll(ctx, userID)
+		tasks, err := tasks.GetAllUserTasks(ctx, userID)
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 
@@ -54,6 +55,7 @@ func New(ctx context.Context, log *slog.Logger, tasks httpserver.Tasks) http.Han
 
 		for _, task := range tasks {
 			tasksRes = append(tasksRes, ResponseTask{
+				ID:        task.ID,
 				Name:      task.Name,
 				Amount:    task.Amount,
 				CreatedAt: task.CreatedAt,

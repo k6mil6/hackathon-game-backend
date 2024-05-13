@@ -1,0 +1,15 @@
+POST /admin/task/create HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_CODE
+Content-Length: 93
+
+# JWT CODE админ получает в респонсе на авторизацию, на ручке /admin/login
+# здесь можно создать задачу для только пользователя, с for_group_id 2 и user_id, или для всех c for_group_id 1, и без user_id
+
+{
+  "name": "testing",
+  "amount": 1001.2,
+  "for_group_id": 2,
+  "user_id": 2
+}

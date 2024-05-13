@@ -1,6 +1,7 @@
 env: "local"
 db:
-    postgres_dsn: "postgres://postgres:postgres@localhost:5442/game_db?sslmode=disable"
+#    postgres_dsn: "postgres://postgres:postgres@localhost:5442/game_db?sslmode=disable"
+    postgres_dsn: "postgres://postgres:postgres@postgres:5432/game_db?sslmode=disable"
     retries_number: 3
     retry_cooldown: 10s
 jwt:

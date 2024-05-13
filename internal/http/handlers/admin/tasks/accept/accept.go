@@ -8,6 +8,7 @@ import (
 	httpserver "github.com/k6mil6/hackathon-game-backend/internal/http"
 	"github.com/k6mil6/hackathon-game-backend/internal/http/middleware/identity"
 	resp "github.com/k6mil6/hackathon-game-backend/internal/http/response"
+	"github.com/k6mil6/hackathon-game-backend/internal/model"
 	taskservice "github.com/k6mil6/hackathon-game-backend/internal/service/tasks"
 	"log/slog"
 	"net/http"
@@ -18,7 +19,7 @@ type Response struct {
 	resp.Response
 }
 
-func New(ctx context.Context, log *slog.Logger, tasks httpserver.Tasks) http.HandlerFunc {
+func New(ctx context.Context, log *slog.Logger, tasks httpserver.Tasks, transactions httpserver.Transactions) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		op := "handlers.admin.tasks.accept.New"
 
@@ -61,7 +62,7 @@ func New(ctx context.Context, log *slog.Logger, tasks httpserver.Tasks) http.Han
 			return
 		}
 
-		err = tasks.MarkAsCompleted(ctx, taskID, adminID)
+		task, err := tasks.MarkAsCompleted(ctx, taskID, adminID)
 		if err != nil {
 			if errors.Is(err, taskservice.ErrNotEnoughPermission) {
 				w.WriteHeader(http.StatusBadRequest)
@@ -78,6 +79,22 @@ func New(ctx context.Context, log *slog.Logger, tasks httpserver.Tasks) http.Han
 			log.Error("failed to mark task as accepted", slog.String("error", err.Error()))
 
 			render.JSON(w, r, resp.Error("failed to mark task as accepted"))
+
+			return
+		}
+
+		err = transactions.AddAdminTransaction(ctx, &model.Transaction{
+			Amount:     task.Amount,
+			SenderID:   adminID,
+			ReceiverID: task.UserID,
+		})
+
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+
+			log.Error("failed to add admin transaction", slog.String("error", err.Error()))
+
+			render.JSON(w, r, resp.Error("failed to add admin transaction"))
 
 			return
 		}

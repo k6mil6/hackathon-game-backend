@@ -19,7 +19,8 @@ type Tasks struct {
 }
 
 type Storage interface {
-	GetAll(ctx context.Context, userID int) ([]model.Task, error)
+	GetAllUserTasks(ctx context.Context, userID int) ([]model.Task, error)
+	GetAllAdminTasks(ctx context.Context, adminID int) ([]model.Task, error)
 	Add(ctx context.Context, task model.Task) (int, error)
 	MarkAsCompleted(ctx context.Context, taskID int) error
 	MarkAsCancelled(ctx context.Context, taskID int) error
@@ -35,14 +36,37 @@ func New(log *slog.Logger, storage Storage) *Tasks {
 	}
 }
 
-func (t *Tasks) GetAll(ctx context.Context, userID int) ([]model.Task, error) {
-	op := "tasks.GetAll"
+func (t *Tasks) GetAllUserTasks(ctx context.Context, userID int) ([]model.Task, error) {
+	op := "tasks.GetAllUserTasks"
 
 	log := t.log.With(slog.String("op", op))
 
 	log.Info("getting all tasks from storage")
 
-	tasks, err := t.storage.GetAll(ctx, userID)
+	tasks, err := t.storage.GetAllUserTasks(ctx, userID)
+	if err != nil {
+		log.Error("failed to get all tasks", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	if len(tasks) == 0 {
+		log.Info("no tasks found")
+		return nil, ErrNoTasks
+	}
+
+	log.Info("got all tasks from storage")
+
+	return tasks, nil
+}
+
+func (t *Tasks) GetAllAdminTasks(ctx context.Context, adminID int) ([]model.Task, error) {
+	op := "tasks.GetAllAdminTasks"
+
+	log := t.log.With(slog.String("op", op))
+
+	log.Info("getting all tasks from storage")
+
+	tasks, err := t.storage.GetAllAdminTasks(ctx, adminID)
 	if err != nil {
 		log.Error("failed to get all tasks", slog.String("error", err.Error()))
 		return nil, err
@@ -136,7 +160,14 @@ func (t *Tasks) MarkAsWaitingForAcceptance(ctx context.Context, taskID, userID i
 		return err
 	}
 
-	if task.UserID != userID {
+	log = log.With(slog.Int("taskID", taskID), slog.Int("userID", userID), slog.Int("forGroupID", task.ForGroupID))
+
+	if task.StatusID != taskstorage.InProgressStatusID {
+		log.Error("task is not in progress")
+		return ErrNotEnoughPermission
+	}
+
+	if task.UserID != userID && task.ForGroupID != taskstorage.AllGroupID {
 		log.Error("user does not have permission to mark this task as waiting for acceptance")
 		return ErrNotEnoughPermission
 	}
@@ -152,7 +183,7 @@ func (t *Tasks) MarkAsWaitingForAcceptance(ctx context.Context, taskID, userID i
 	return nil
 }
 
-func (t *Tasks) MarkAsCompleted(ctx context.Context, taskID, adminID int) error {
+func (t *Tasks) MarkAsCompleted(ctx context.Context, taskID, adminID int) (model.Task, error) {
 	op := "tasks.MarkAsCompleted"
 
 	log := t.log.With(slog.String("op", op))
@@ -162,28 +193,28 @@ func (t *Tasks) MarkAsCompleted(ctx context.Context, taskID, adminID int) error 
 	task, err := t.storage.GetByID(ctx, taskID)
 	if err != nil {
 		log.Error("failed to get task", slog.String("error", err.Error()))
-		return err
+		return model.Task{}, err
 	}
 
 	if task.CreatedBy != adminID {
 		log.Error("admin does not have permission to mark task as completed")
-		return ErrNotEnoughPermission
+		return model.Task{}, ErrNotEnoughPermission
 	}
 
 	if task.StatusID != taskstorage.WaitingForAcceptanceStatusID {
 		log.Error("task is not waiting for acceptance")
-		return ErrNotEnoughPermission
+		return model.Task{}, ErrNotEnoughPermission
 	}
 
 	err = t.storage.MarkAsCompleted(ctx, taskID)
 	if err != nil {
 		log.Error("failed to mark task as completed", slog.String("error", err.Error()))
-		return err
+		return model.Task{}, err
 	}
 
 	log.Info("marked task as completed")
 
-	return nil
+	return task, nil
 }
 
 func (t *Tasks) MarkAsCancelled(ctx context.Context, taskID, userID int) error {

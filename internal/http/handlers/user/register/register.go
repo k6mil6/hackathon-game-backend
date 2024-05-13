@@ -18,7 +18,7 @@ type Response struct {
 	resp.Response
 }
 
-func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.HandlerFunc {
+func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth, users httpserver.Users) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		const op = "handlers.user.register.New"
 
@@ -66,6 +66,13 @@ func New(ctx context.Context, log *slog.Logger, auth httpserver.Auth) http.Handl
 		}
 
 		log.Info("user registered with id", slog.Int("id", id))
+
+		err = users.CreateBalance(ctx, id)
+		if err != nil {
+			log.Error("error creating balance:", err)
+			render.JSON(w, r, resp.Error("error creating balance"))
+			return
+		}
 
 		render.JSON(w, r, Response{
 			resp.OK(),

@@ -7,7 +7,8 @@ INSERT INTO transaction_types (name) VALUES
     ('transfer'),
     ('purchase'),
     ('deposit'),
-    ('refund')
+    ('refund'),
+    ('reward')
     ON CONFLICT (name) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS transaction_statuses (
