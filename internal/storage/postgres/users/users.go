@@ -24,6 +24,12 @@ func NewStorage(db *sqlx.DB, log *slog.Logger) *Storage {
 	}
 }
 
+const (
+	CatClassID    = 1
+	DogClassID    = 2
+	RacoonClassID = 3
+)
+
 func (s *Storage) Save(ctx context.Context, user *model.User) (int, error) {
 	op := "users.Save"
 
@@ -308,6 +314,7 @@ type dbUser struct {
 	Balance      float64   `db:"balance"`
 	Email        string    `db:"email"`
 	PasswordHash []byte    `db:"password_hash"`
+	ClassID      int       `db:"class_id"`
 	RegisteredAt time.Time `db:"registered_at"`
 	HiredAt      time.Time `db:"hired_at"`
 }

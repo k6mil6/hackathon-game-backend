@@ -8,6 +8,7 @@ type User struct {
 	Balance      float64
 	Email        string
 	PasswordHash []byte
+	ClassID      int
 	RegisteredAt time.Time
 	HiredAt      time.Time
 }
@@ -56,4 +57,19 @@ type Task struct {
 	CreatedBy  int
 	ForGroupID int
 	UserID     int
+}
+
+type Business struct {
+	ID      int
+	Name    string
+	TypeID  int
+	OwnerID int
+	Price   float64
+}
+
+type BusinessType struct {
+	ID          int
+	Name        string
+	Description string
+	Profit      float64
 }

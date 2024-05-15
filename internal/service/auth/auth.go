@@ -92,7 +92,7 @@ func (a *Auth) LoginUser(ctx context.Context, username string, password string) 
 	return token, nil
 }
 
-func (a *Auth) RegisterUser(ctx context.Context, username string, password string) (int, error) {
+func (a *Auth) RegisterUser(ctx context.Context, username string, password string, classID int) (int, error) {
 	const op = "auth.Auth.RegisterUser"
 
 	log := a.log.With(
@@ -111,6 +111,7 @@ func (a *Auth) RegisterUser(ctx context.Context, username string, password strin
 	user := model.User{
 		Username:     username,
 		PasswordHash: passwordHash,
+		ClassID:      classID,
 	}
 
 	id, err := a.usersStorage.Save(ctx, &user)
